@@ -975,12 +975,27 @@
     const offCtx = off.getContext('2d');
     drawComposite(offCtx, fmt.w, fmt.h, state.stickerStyleId);
 
-    off.toBlob((blob)=>{
+    off.toBlob(async (blob)=>{
+      const candLabel = (state.candidateId || 'campanha');
+      const fileName = `foto-campanha-${candLabel}-${state.format}.png`;
+
+      // iOS Safari: navegador não salva bem via <a download>. Web Share API
+      // abre a folha nativa com "Salvar Imagem", que vai direto para Fotos.
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          // se falhar, cai no fallback de download abaixo
+        }
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const candLabel = (state.candidateId || 'campanha');
       a.href = url;
-      a.download = `foto-campanha-${candLabel}-${state.format}.png`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
